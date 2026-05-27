@@ -507,6 +507,7 @@ function allProjects(inclArchived=false){
       .flatMap(a=>a.projects.filter(p=>inclArchived||!p.archived)));
 }
 function showProject(coId,accId,projId){
+  if(S.projectId!==projId)S.activeTab=null;
   S.companyId=coId;S.accId=accId;S.projectId=projId;S.page='project';S.noteId=null;renderAll();
 }
 function showAccount(coId,accId){
@@ -730,14 +731,14 @@ function homeSidebar(){
 }
 
 // ─── ROUTING ──────────────────────────────────────────────────
-function showPage(p){S.page=p;S.projectId=null;S.companyId=null;S.accId=null;S.noteId=null;renderAll();}
+function showPage(p){S.page=p;S.projectId=null;S.companyId=null;S.accId=null;S.noteId=null;S.activeTab=null;renderAll();}
 function showCompanyLog(coId){S.companyId=coId;S.projectId=null;S.accId=null;S.page='companylog';renderAll();}
 function filterHomeByCategory(cat){S.page='todos';renderAll();}
 
 function renderContent(){
   const c=document.getElementById('content');
   if(S.page==='search'){c.innerHTML=renderSearch();return;}
-  if(S.page==='project'&&S.projectId){c.innerHTML=renderProjectPage();return;}
+  if(S.page==='project'&&S.projectId){c.innerHTML=renderProjectPage();restoreTab();return;}
   if(S.page==='note'&&S.noteId){c.innerHTML=renderNotePage();return;}
   if(S.page==='archive'){c.innerHTML=renderArchivePage();return;}
   if(S.world==='work'){
@@ -1173,7 +1174,16 @@ function renderProjectPage(){
   return html;
 }
 
-// ─── NOTE DETAIL PAGE ─────────────────────────────────────────
+// restore active tab after render
+function restoreTab(){
+  const tab=S.activeTab||'pt-overview';
+  const panels=['pt-overview','pt-tasks','pt-milestones','pt-log','pt-notebook'];
+  panels.forEach(p=>{const el=document.getElementById(p);if(el)el.classList.toggle('hidden',p!==tab);});
+  // highlight correct tab button
+  document.querySelectorAll('.ctab').forEach((btn,i)=>{
+    btn.classList.toggle('active', panels[i]===tab);
+  });
+}
 function renderNotePage(){
   const r=findProject(S.projectId);
   if(!r)return'<div>Note not found</div>';
@@ -2086,7 +2096,7 @@ function execDelete(type,id,id2,label){
   else if(type==='homelog'){S.home.logs=S.home.logs.filter(l=>l.id!==id);saveState();renderContent();}
   else if(type==='homecategory')deleteHomeCategory(label);
   else if(type==='todo'){
-    const parts=(id2||'').split('|');const ctx=parts[0],projId=parts[3];
+    const parts=(id2||'').split('|');const ctx=parts[0],projId=parts[2];
     if(ctx==='project'){const r=findProject(projId);if(r)r.proj.todos=r.proj.todos.filter(t=>t.id!==id);}
     else if(ctx==='home')S.home.todos=S.home.todos.filter(t=>t.id!==id);
     saveState();renderContent();
@@ -2220,6 +2230,7 @@ function addCatFromInput(){
 
 // ─── TAB SWITCHER ─────────────────────────────────────────────
 function switchTab(btn,tabId){
+  S.activeTab=tabId;
   const panels=['pt-overview','pt-tasks','pt-milestones','pt-log','pt-notebook'];
   panels.forEach(p=>{const el=document.getElementById(p);if(el)el.classList.toggle('hidden',p!==tabId);});
   if(btn){
